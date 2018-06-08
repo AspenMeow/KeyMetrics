@@ -1,0 +1,5 @@
+#ignore tracking PDF
+*.pdf
+#ignore tracking excel
+*.xlsx
+*.xlsx
