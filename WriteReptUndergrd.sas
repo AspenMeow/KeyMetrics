@@ -3,17 +3,164 @@
 LIBNAME BIMSUTST  odbc required="DSN=BIMSUTST; uid=&BIMSUTST_uid; pwd=&BIMSUTST_pwd";
 libname PAG oracle path="MSUEDW" user="&MSUEDW_uid" pw= "&MSUEDW_pwd"
 schema = OPB_PERS_FALL preserve_tab_names = yes connection=sharedread;
+libname Devdm odbc required="DSN=NT_Dev_Datamart";
+/***********get data from rowdata no extra*******************************/
+proc sql stimer;
+ create table ppsraw as 
+ select a.year_id,y.year_name,
+		                a.row_id, a.auc_id,
+                   r.variable, a.value, at.LEVEL4,d.MANAGE_LEVEL_3,e.LEVEL_3_RC_ADMINISTERING_NAME,d.LEVEL_4_DISPLAY_NAME
+                    from Devdm.rowdata_no_extras a 
+                    inner join Devdm.row_ref r 
+                   on a.row_id=r.rowid
+                   inner join Devdm.Years y
+                   on a.year_id=y.year_ID
+				   inner join BIMSUTST.ATOMS_UPLOADED at 
+				   on a.auc_id=at.ATOMS
+				   inner join BIMSUTST.DATAMART_LEVEL4_NEW d
+                    on at.LEVEL4=d.LEVEL_4_CODE
+                   inner join BIMSUTST.DATAMART_LEVEL3_NEW e
+                       on d.MANAGE_LEVEL_3=e.LEVEL_3_CODE
+                  where  row_id in (42,43,44,45,46,
+                   108,
+                   37, 153,
+                   882,883,
+                   376,
+                   375,81);
+
+/*by college and dept*/
+   create table ppsdp as 
+   select distinct year_id, year_name, row_id, variable, trim(MANAGE_LEVEL_3)||'-'|| trim(LEVEL_3_RC_ADMINISTERING_NAME) as leadcoll, trim(LEVEL4)||'-'|| trim(LEVEL_4_DISPLAY_NAME) as Dept, sum(value) as value
+   from ppsraw
+   group by year_id, year_name, row_id, variable, MANAGE_LEVEL_3, LEVEL_3_RC_ADMINISTERING_NAME, LEVEL4, LEVEL_4_DISPLAY_NAME;
+
+/*by college only*/
+   create table ppscoll as 
+   select distinct year_id, year_name, row_id, variable,trim(MANAGE_LEVEL_3)||'-'|| trim(LEVEL_3_RC_ADMINISTERING_NAME) as leadcoll,  trim(MANAGE_LEVEL_3)||'-'|| trim(LEVEL_3_RC_ADMINISTERING_NAME)||'-All' as Dept ,sum(value) as value
+   from ppsraw
+   group by year_id, year_name, row_id, variable, MANAGE_LEVEL_3,LEVEL_3_RC_ADMINISTERING_NAME;
+
+quit;
+
+
+
+
+data pps;
+set ppscoll ppsdp;
+run;
+
+/*transpose and compute for ratio**/
+proc sort data= pps; by year_id year_name leadcoll Dept; run;
+proc transpose data=pps out=ppsl prefix=V;
+ by year_id year_name leadcoll Dept;
+ id row_id;
+ var value;
+ run;
+data ppsl;
+set ppsl;
+if V108=. or V37=. or V37=0 then V1080=. ;
+else V1080=V108/V37;
+if V37=. or V153=. or V153=0 then V3700=.;
+else V3700=V37/V153;
+if V375=. or V81=. or V81=0 then V3750=.;
+else V3750=V375/V81;
+if V882=. or V883=. or V883=0 then V8820=.;
+else V8820=V882/V883;
+drop _NAME_;
+run;
+/**transpose back to long**/
+proc transpose data=ppsl out =pps;
+by year_id year_name leadcoll Dept;
+run;
+data pps;
+set pps;
+/**filter null value and numerator deminoaor */
+where COL1 ne . and _NAME_ not in ('V37','V153','V375','V81','V108','V882','V883');
+run;
+/**get max year**/
+proc sql;
+create table varmaxyr as
+select distinct _NAME_, max(year_id) as maxyr
+from pps
+group by _NAME_;
+
+create table pps as 
+select a.*
+from pps a
+inner join varmaxyr b
+on a._NAME_=b._NAME_ and a.year_id=b.maxyr;
+quit;
+
+/*proc sort data=pps; by leadcoll Dept _NAME_ year_id;
+run;
+data pps;
+set pps;
+by leadcoll Dept _NAME_ year_id ;
+if last._NAME_ then output;
+run;*/
+/**recode variable**/
+data pps;
+set pps;
+if _NAME_='V42' then var='Undergraduates';
+else if _NAME_='V43' then var='Masters';
+else if _NAME_='V44' then var='Doctoral';
+else if _NAME_='V45' then var='Grad_Prof';
+else if _NAME_='V46' then var='Total_Student';
+else if _NAME_='V1080' then var='V1';
+else if _NAME_='V3700' then var='V2';
+else if _NAME_='V8820' then var='V3';
+else if _NAME_='V376' then var='V4';
+else if _NAME_='V3750' then var='V5';
+else var=_NAME_;
+/*include only instruction college*/
+where substr(leadcoll,1,2) in ('38', '08','10','02','14','32','16','04','24','46','28','33','34','22','30','06');
+run;
+
+/**transpose to wide 2 variables******/
+
+proc sort data=pps; by leadcoll dept ;run;
+/*for actual value*/
+proc transpose data=pps out=pps1(drop=_NAME_ ) ;
+id  var;
+by leadcoll dept;
+var COL1;
+run;
+/*for year*/
+proc transpose data=pps out=pps2(drop=_NAME_ _LABEL_) prefix=Yr_;
+id  var;
+by leadcoll dept;
+var year_name;
+run;
+
+data pps;
+merge pps1 pps2;
+by leadcoll dept;
+run;
+
+/*
+proc print data= pps;
+where substr(leadcoll,1,2)='14';
+run;*/
 
 /*********PPS metrics import pre processing from R ppskeymetricsds.R*************/
 /********PPS metrics always using the latest year available*********************/
 
-proc import datafile="O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Data\PPSmetrics.xlsx"  out=PPS dbms=xlsx replace ;sheet='PPS';
+/*proc import datafile="O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Data\PPSmetrics.xlsx"  out=PPSt dbms=xlsx replace ;sheet='PPS';
 run;
 /**PPS quantitle*
 proc import datafile="O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Data\PPSmetrics.xlsx"  out=PPSqt dbms=xlsx replace ;sheet='PPSquantitle';
 run;*/
 
 /*college with grad prof students*/
+data pps;
+set pps;
+MANAGE_LEVEL_3= substr(leadcoll,1,2);
+if find(Dept,'All','i')>0 then orderdp=1;
+else orderdp=0;
+run;
+
+
+
 proc sql ;
 create table pps  as 
 select a.*, coll.gradprofcnt
@@ -25,8 +172,9 @@ left join
 		group by MANAGE_LEVEL_3
 		) coll
 on a.MANAGE_LEVEL_3=coll.MANAGE_LEVEL_3
+/**include only those depts with undergrad*/
 where a.Undergraduates ne . and a.Undergraduates>0
-order by a.MANAGE_LEVEL_3,a.orderdp,a.LEVEL4;
+order by a.MANAGE_LEVEL_3,a.orderdp,a.Dept;
 
 quit;
 
@@ -63,15 +211,15 @@ run;
 /*get PPS yrs as macro*/
  data _null_;
  set PPS;
- call symput('Ungrdyr',Undergraduates_yr);
- call symput('Masteryr',Masters_yr);
- call symput('Docyr',Doctoral_yr);
- call symput('Profyr',Grad_Prof_yr);
- call symput('V1yr',V1_yr);
-  call symput('V2yr',V2_yr);
-   call symput('V3yr',V3_yr);
-  call symput('V4yr',V4_yr);
- call symput('V5yr',V5_yr);
+ call symput('Ungrdyr',Yr_Undergraduates);
+ call symput('Masteryr',Yr_Masters);
+ call symput('Docyr',Yr_Doctoral);
+ call symput('Profyr',Yr_Grad_Prof);
+ call symput('V1yr',Yr_V1);
+  call symput('V2yr',Yr_V2);
+   call symput('V3yr',Yr_V3);
+  call symput('V4yr',Yr_V4);
+ call symput('V5yr',Yr_V5);
 run;
 %put &V5yr;
 %put %substr(&Ungrdyr,1,4);
