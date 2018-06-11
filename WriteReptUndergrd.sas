@@ -465,11 +465,23 @@ run;
 
 
 
-
-
-
-
-
+/***PPS colorblock***/
+  %macro colorblock(var=V, t=PSV, j=2,add=5);
+	  compute &&var.&j;
+     if &&var.&j lt &&&t.&j.33_3 & &&var.&j ne . then call define(_col_,"style","style={background=#fff7bc}");
+	 else if &&var.&j gt &&&t.&j.66_6 & &&var.&j ne . then call define(_col_,"style","style={background=#a1d99b}");
+	 else if &&var.&j ne . then call define(_col_,"style","style={background=#bdbdbd}");
+	 if find(_c1_,'All','i') then  CALL DEFINE("_c%eval(&j+&add)_", "style","STYLE=[BACKGROUND=#ffffff]");
+       endcomp;
+   %mend;
+/***AA colorblock**/
+%macro AAcolor(var,j);
+	  compute &var;
+     	 if &var lt &&&j.33_3 & &var ne . then call define(_col_,"style","style={background= #fff7bc}");
+	 else if &var gt &&&j.66_6 & &var ne . then call define(_col_,"style","style={background=#a1d99b}");
+	 else if &var ne . then call define(_col_,"style","style={background=#bdbdbd}");
+       endcomp;
+ %mend;
 
 
 %macro ppsmetric;
@@ -480,8 +492,6 @@ run;
 		call symput('collname',leadcoll);
 		call symput('gradprofn',gradprofcnt);
 		run;
-
-		
 
 proc report data= ds  style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt};
 		title1 h=13pt "PPS Metrics by Lead Organization Structure"  ;
@@ -514,41 +524,16 @@ proc report data= ds  style(report)={outputwidth=100%} style(header)={font_face=
 	 if find(_c1_,'All','i') then  CALL DEFINE("_c6_", "style","STYLE=[BACKGROUND=white]");
 	
  endcomp;
- compute V2;
-     if V2 lt &PSV233_3 & V2 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if V2 gt &PSV266_6 & V2 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if V2 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c7_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
- compute V3;
-     if V3 lt &PSV333_3 & V3 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if V3 gt &PSV366_6 & V3 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if V3 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c8_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
- compute V4;
-     if V4 lt &PSV433_3 & V4 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if V4 gt &PSV466_6 & V4 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if V4 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c9_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
- compute V5;
-     if V5 lt &PSV533_3 & V5 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if V5 gt &PSV566_6 & V4 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if V5 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c10_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
+ %colorblock(j=2);
+ %colorblock(j=3);
+ %colorblock(j=4);
+ %colorblock(j=5);
  compute Dept;
      if find(Dept,'All','i') then call define(_row_,"style","style={font_weight=bold}");
 	
  endcomp;
  
 run;
-
 
 /**AA**/
 data aa;
@@ -585,45 +570,16 @@ define PCT_GRANTS_PER_FACULTY1/display 'Percentile on Grants per faculty' format
 define PCT_GRANT_DOLLARS_PER_FACULTY1/display 'Percentitle on Grant Dollars per faculty' format=comma10.2 ;
 define PCT_DOLLARS_PER_GRANT1/display 'Percentitle Dollars per Grant' format=comma10.2 ;
 define PCT_AWARDS_PER_FACULTY1/display 'Percentitle on Awards per faculty' format=comma10.2 ;
-compute PCT_JOURNAL_PUBS_PER_FACULTY1;
-     if PCT_JOURNAL_PUBS_PER_FACULTY1 lt &JP33_3 & PCT_JOURNAL_PUBS_PER_FACULTY1 ne . then call define(_col_,"style","style={background= #fff7bc}");
-	 else if PCT_JOURNAL_PUBS_PER_FACULTY1 gt &JP66_6 & PCT_JOURNAL_PUBS_PER_FACULTY1 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if PCT_JOURNAL_PUBS_PER_FACULTY1 ne . then call define(_col_,"style","style={background=#bdbdbd}");
- endcomp;
- compute PCT_CITATIONS_PER_FACULTY1;
-     if PCT_CITATIONS_PER_FACULTY1 lt &CF33_3 & PCT_CITATIONS_PER_FACULTY1 ne . then call define(_col_,"style","style={background= #fff7bc}");
-	 else if PCT_CITATIONS_PER_FACULTY1 gt &CF66_6 & PCT_CITATIONS_PER_FACULTY1 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if PCT_CITATIONS_PER_FACULTY1 ne . then call define(_col_,"style","style={background=#bdbdbd}");
- endcomp;
- compute PCT_CITATIONS_PER_PUBLICATION1;
-     if PCT_CITATIONS_PER_PUBLICATION1 lt &CP33_3 & PCT_CITATIONS_PER_PUBLICATION1 ne . then call define(_col_,"style","style={background= #fff7bc}");
-	 else if PCT_CITATIONS_PER_PUBLICATION1 gt &CP66_6 & PCT_CITATIONS_PER_PUBLICATION1 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if PCT_CITATIONS_PER_PUBLICATION1 ne . then call define(_col_,"style","style={background=#bdbdbd}");
- endcomp;
-  compute PCT_GRANTS_PER_FACULTY1;
-     if PCT_GRANTS_PER_FACULTY1 lt &GF33_3 & PCT_GRANTS_PER_FACULTY1 ne . then call define(_col_,"style","style={background= #fff7bc}");
-	 else if PCT_GRANTS_PER_FACULTY1 gt &GF66_6 & PCT_GRANTS_PER_FACULTY1 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if PCT_GRANTS_PER_FACULTY1 ne . then call define(_col_,"style","style={background=#bdbdbd}");
- endcomp;
-  compute PCT_GRANT_DOLLARS_PER_FACULTY1;
-     if PCT_GRANT_DOLLARS_PER_FACULTY1 lt &GDF33_3 & PCT_GRANT_DOLLARS_PER_FACULTY1 ne . then call define(_col_,"style","style={background= #fff7bc}");
-	 else if PCT_GRANT_DOLLARS_PER_FACULTY1 gt &GDF66_6 & PCT_GRANT_DOLLARS_PER_FACULTY1 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if PCT_GRANT_DOLLARS_PER_FACULTY1 ne . then call define(_col_,"style","style={background=#bdbdbd}");
- endcomp;
-  compute PCT_DOLLARS_PER_GRANT1;
-     if PCT_DOLLARS_PER_GRANT1 lt &DG33_3 & PCT_DOLLARS_PER_GRANT1 ne . then call define(_col_,"style","style={background= #fff7bc}");
-	 else if PCT_DOLLARS_PER_GRANT1 gt &DG66_6 & PCT_DOLLARS_PER_GRANT1 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if PCT_DOLLARS_PER_GRANT1 ne . then call define(_col_,"style","style={background=#bdbdbd}");
- endcomp;
-  compute PCT_AWARDS_PER_FACULTY1;
-     if PCT_AWARDS_PER_FACULTY1 lt &AF33_3 & PCT_AWARDS_PER_FACULTY1 ne . then call define(_col_,"style","style={background= #fff7bc}");
-	 else if PCT_AWARDS_PER_FACULTY1 gt &AF66_6 & PCT_AWARDS_PER_FACULTY1 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if PCT_AWARDS_PER_FACULTY1 ne . then call define(_col_,"style","style={background=#bdbdbd}");
- endcomp;
- 
+%AAcolor(var=PCT_JOURNAL_PUBS_PER_FACULTY1,j=JP);
+%AAcolor(var=PCT_CITATIONS_PER_FACULTY1,j=CF);
+%AAcolor(var=PCT_CITATIONS_PER_PUBLICATION1, j=CP);
+%AAcolor(var=PCT_GRANTS_PER_FACULTY1, j=GF);
+%AAcolor(var=PCT_GRANT_DOLLARS_PER_FACULTY1, j=GDF);
+%AAcolor(var=PCT_DOLLARS_PER_GRANT1,j=DG);
+%AAcolor(var=PCT_AWARDS_PER_FACULTY1,j=AF);
 run;
 
-/**PAGenter**/
+/**PAGenter cohort**/
 data PAG;
 set PAG_enter;
 MAU= substr(Coll_1st,1,2);
@@ -647,48 +603,12 @@ define PERSIST3/ display 'Persist 3rd Returning Fall' format=comma10.1 ;
 define Grad4/ display 'Graduated by 4th Yr' format=comma10.1 ;
 define Grad5/ display 'Graduated by 5th Yr' format=comma10.1 ;
 define Grad6/ display 'Graduated by 6th Yr' format=comma10.1 ;
-compute PERSIST1;
-     if PERSIST1 lt &P133_3 & PERSIST1 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if PERSIST1 gt &P166_6 & PERSIST1 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if PERSIST1 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c3_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
- compute PERSIST2;
-     if PERSIST2 lt &P233_3 & PERSIST2 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if PERSIST2 gt &P266_6 & PERSIST2 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if PERSIST2 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c4_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
- compute PERSIST3;
-     if PERSIST3 lt &P333_3 & PERSIST3 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if PERSIST3 gt &P366_6 & PERSIST3 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if PERSIST3 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c5_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
-compute GRAD4;
-     if GRAD4 lt &G433_3 & GRAD4 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if GRAD4 gt &G466_6 & GRAD4 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if GRAD4 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c6_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
- compute GRAD5;
-     if GRAD5 lt &G533_3 & GRAD5 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if GRAD5 gt &G566_6 & GRAD5 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if GRAD5 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c7_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
-  compute GRAD6;
-     if GRAD6 lt &G633_3 & GRAD6 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if GRAD6 gt &G666_6 & GRAD6 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if GRAD6 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c8_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
+%colorblock(var=PERSIST,t=P,j=1,add=2);
+%colorblock(var=PERSIST, t=P, j=2,add=2);
+%colorblock(var=PERSIST, t=P, j=3,add=2);
+%colorblock(var=GRAD, t=G, j=4,add=2);
+%colorblock(var=GRAD, t=G, j=5,add=2);
+%colorblock(var=GRAD, t=G, j=6,add=2);
 
 compute Dept_1st;
      if find(Dept_1st,'All','i') then call define(_row_,"style","style={font_weight=bold}");
