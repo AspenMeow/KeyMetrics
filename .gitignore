@@ -3,3 +3,5 @@
 #ignore tracking excel
 *.xlsx
 *.xlsx
+#ignore rmd file
+*.Rmd
