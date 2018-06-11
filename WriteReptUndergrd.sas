@@ -4,6 +4,10 @@ LIBNAME BIMSUTST  odbc required="DSN=BIMSUTST; uid=&BIMSUTST_uid; pwd=&BIMSUTST_
 libname PAG oracle path="MSUEDW" user="&MSUEDW_uid" pw= "&MSUEDW_pwd"
 schema = OPB_PERS_FALL preserve_tab_names = yes connection=sharedread;
 libname Devdm odbc required="DSN=NT_Dev_Datamart";
+
+/*set pag year parameter value*/
+%let entrycohort =2011;
+%let gradcohort ='2016-2017';
 /***********get data from rowdata no extra*******************************/
 proc sql stimer;
  create table ppsraw as 
@@ -311,8 +315,7 @@ run;
 
 /************************************************/
 /****************PAG*******************************/
-%let entrycohort =2011;
-%let gradcohort ='2016-2017';
+
 
 
 proc sql stimer;
@@ -479,68 +482,7 @@ run;
 		run;
 
 		
-		%if &gradprofn=0 %then %do;
-		proc report data= ds  style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt}  ;
-		title1 h=13pt "PPS Metrics by Lead Organization Structure"  ;
-		title2 h=6pt "";
-		title3 "&collname" ;
-		footnote1 h=9pt justify=left "Note: master student counts include non-degree seeking lifelong graduates and MSU Law lifelong students." ;
-		footnote2 h=9pt justify=left "Departments included are those with undergraduates and led by instructional colleges and have data in at least one PPS metrics.";
-		footnote3 h=9pt justify=left "PPS version: &version";
-		column Dept Undergraduates Masters Doctoral V1 V2 V3 V4 V5;
-		define Dept/display 'Dept Name'   ;
-		define Undergraduates/display "Undergrads Fall %substr(&Ungrdyr,1,4)" format=comma15.0 ;
-		define Masters/display "Masters Fall %substr(&Masteryr,1,4)" format=comma15.0 ;
-		define Doctoral/display "Doctoral Fall %substr(&Masteryr,1,4)" format=comma15.0 ;
-		define V1/display "General Fund Budget/FY Admin SCH &V1yr" format=dollar15.0 style(column)=[width=8%];
-		define V2/display "Admin Based SCH per Rank Fac FY &V2yr" format=comma15.0 style(column)=[width=8%];
-		define V3/display "Tuition Revenue/Instructional Cost &V3yr" format=percentn15.0 style(column)=[width=8%];
-		define V4/display "Total Grants - 3 Year Average-PI-Real$ &V4yr" format=dollar15.0;
-		define V5/display "Total Grant PI Based/TS AF-FTE &V5yr" format=dollar15.0 style(column)=[width=8%];
 
- compute V1;
-     if V1 lt &PSV133_3 & V1 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if V1 gt &PSV166_6 & V1 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if V1 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c5_", "style","STYLE=[BACKGROUND=white]");
-	
- endcomp;
- compute V2;
-     if V2 lt &PSV233_3 & V2 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if V2 gt &PSV266_6 & V2 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if V2 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c6_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
- compute V3;
-     if V3 lt &PSV333_3 & V3 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if V3 gt &PSV366_6 & V3 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if V3 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c7_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
- compute V4;
-     if V4 lt &PSV433_3 & V4 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if V4 gt &PSV466_6 & V4 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if V4 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c8_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
- compute V5;
-     if V5 lt &PSV533_3 & V5 ne . then call define(_col_,"style","style={background=#fff7bc}");
-	 else if V5 gt &PSV566_6 & V4 ne . then call define(_col_,"style","style={background=#a1d99b}");
-	 else if V5 ne . then call define(_col_,"style","style={background=#bdbdbd}");
-	 if find(_c1_,'All','i') then  CALL DEFINE("_c9_", "style","STYLE=[BACKGROUND=#ffffff]");
-	
- endcomp;
- compute Dept;
-     if find(Dept,'All','i') then call define(_row_,"style","style={font_weight=bold}");
-	
- endcomp;
- 
-run;
-%end;
-%else %do;
 proc report data= ds  style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt};
 		title1 h=13pt "PPS Metrics by Lead Organization Structure"  ;
 		title2 h=6pt "";
@@ -552,8 +494,13 @@ proc report data= ds  style(report)={outputwidth=100%} style(header)={font_face=
 		define Dept/display 'Dept Name' ;
 		define Undergraduates/display "Undergrads Fall %substr(&Ungrdyr,1,4)" format=comma15.0 ;
 		define Masters/display "Masters Fall %substr(&Masteryr,1,4)" format=comma15.0 ;
-		define Doctoral/display "Doctoral Fall %substr(&Masteryr,1,4)" format=comma15.0 ;
-		define Grad_Prof/display "Professional Students Fall %substr(&Masteryr,1,4)" format=comma15.0 ;
+		define Doctoral/display "Doctoral Fall %substr(&Docyr,1,4)" format=comma15.0 ;
+		%if &gradprofn=0 %then %do;
+		define Grad_Prof/display "Professional Students Fall %substr(&Profyr,1,4)" format=comma15.0 noprint;
+		%end;
+		%else %do;
+        define Grad_Prof/display "Professional Students Fall %substr(&Profyr,1,4)" format=comma15.0 ;
+		%end;
 		define V1/display "General Fund Budget/FY Admin SCH &V1yr" format=dollar15.0 style(column)=[width=8%];
 		define V2/display "Admin Based SCH per Rank Fac FY &V2yr" format=comma15.0 style(column)=[width=8%];
 		define V3/display "Tuition Revenue/Instructional Cost &V3yr" format=percentn15.0 style(column)=[width=8%];
@@ -601,7 +548,7 @@ proc report data= ds  style(report)={outputwidth=100%} style(header)={font_face=
  endcomp;
  
 run;
-%end;	
+
 
 /**AA**/
 data aa;
