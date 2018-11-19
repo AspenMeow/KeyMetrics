@@ -9,6 +9,9 @@ libname PPS odbc required="DSN=NT_PPS";
 /*set pag year parameter value*/
 %let entrycohort =2012;
 %let gradcohort ='2017-2018';
+
+/*set whether pps section include only departments have undergrads*/
+%let ungradinclude=Y;
 /***********get data from rowdata no extra*******************************/
 proc sql stimer;
  create table ppsraw as 
@@ -224,24 +227,35 @@ if find(Dept,'All','i')>0 then orderdp=1;
 else orderdp=0;
 run;
 
-
-
 proc sql ;
 create table pps  as 
-select a.*, coll.gradprofcnt
-from pps a 
-left join
+	select a.*, coll.gradprofcnt
+	from pps a 
+	left join
       ( 
 	select MANAGE_LEVEL_3, max(Grad_Prof) as gradprofcnt
 		from pps
 		group by MANAGE_LEVEL_3
 		) coll
-on a.MANAGE_LEVEL_3=coll.MANAGE_LEVEL_3
-/**include only those depts with undergrad*/
-where a.Undergraduates ne . and a.Undergraduates>0
+	on a.MANAGE_LEVEL_3=coll.MANAGE_LEVEL_3
+	
+	/**include only those depts with students*/
+where a.Total_Student ne . and a.Total_Student>0
 order by a.MANAGE_LEVEL_3,a.orderdp,a.Dept;
-
 quit;
+
+
+
+%macro ppsds;
+	%if &ungradinclude=Y %then %do;
+	data pps;
+	set pps;
+	where Undergraduates ne . and Undergraduates>0;
+	%end;
+	run;
+%mend;
+%ppsds;
+
 
 
 
