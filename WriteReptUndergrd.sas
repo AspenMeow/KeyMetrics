@@ -4,10 +4,11 @@ LIBNAME BIMSUTST  odbc required="DSN=BIMSUTST; uid=&BIMSUTST_uid; pwd=&BIMSUTST_
 libname PAG oracle path="MSUEDW" user="&MSUEDW_uid" pw= "&MSUEDW_pwd"
 schema = OPB_PERS_FALL preserve_tab_names = yes connection=sharedread;
 libname Devdm odbc required="DSN=NT_Dev_Datamart";
+libname PPS odbc required="DSN=NT_PPS";
 
 /*set pag year parameter value*/
-%let entrycohort =2011;
-%let gradcohort ='2016-2017';
+%let entrycohort =2012;
+%let gradcohort ='2017-2018';
 /***********get data from rowdata no extra*******************************/
 proc sql stimer;
  create table ppsraw as 
@@ -82,17 +83,77 @@ set pps;
 where COL1 ne . and _NAME_ not in ('V37','V153','V375','V81','V108','V882','V883');
 run;
 /**get max year**/
-proc sql;
-create table varmaxyr as
-select distinct _NAME_, max(year_id) as maxyr
-from pps
-group by _NAME_;
+proc sql stimer;
+create table yr as 
+select a.*,b.row_id
+from PPS.DataAllYears a
+inner join Devdm.Datamart_Variables_Current b
+on a.typea=b.typea
+and a.subtype=b.subtype
+and a.type=b.type
+and a.suborder=b.suborder
+where a.infounit='51000'
+and b. row_id in (42,43,44,45,46,
+                   108,
+                   37, 153,
+                   882,883,
+                   376,
+                   375,81);
+quit;
 
+proc contents data=yr out=var noprint;
+run;
+
+proc sql noprint;
+select NAME into: yearlist separated by ' '
+from var
+where substr(NAME,1,4)='Year';
+quit;
+/*transpose*/
+proc sort data=yr; by row_id; run;
+proc transpose data= yr out=yrlong;
+by row_id;
+var &yearlist.;
+run;
+
+data yrlong;
+set yrlong;
+yrid = input( substr(_LABEL_,5, length(_LABEL_)-4),2. );
+where col1 ne . ;
+run;
+
+proc sort data=yrlong; by row_id yrid; run;
+data yrlong;
+set yrlong;
+by row_id yrid;
+if last.row_id then output;
+run;
+
+proc transpose data=yrlong out=yrlong1 prefix=V;
+id row_id;
+var yrid;
+run;
+
+data yrlong1;
+set yrlong1;
+V1080= min(V108,V37);
+V3700=min(V37,V153);
+ V3750 = min(V375,V81);
+V8820=min(V882,V883);
+drop _NAME_;
+run;
+
+/**transpose back to long**/
+proc transpose data=yrlong1 out =yrlong1;
+run;
+
+
+proc sql;
 create table pps as 
 select a.*
 from pps a
-inner join varmaxyr b
-on a._NAME_=b._NAME_ and a.year_id=b.maxyr;
+inner join yrlong1 b
+on a._NAME_=b._NAME_ and a.year_id=b.COL1;
 quit;
 
 /*proc sort data=pps; by leadcoll Dept _NAME_ year_id;
@@ -657,7 +718,7 @@ compute Dept_DEGR;
 
 options   nodate nonumber leftmargin=0.5in rightmargin=0.5in orientation=landscape papersize=A4 center missing=' ' ;
 ods listing close;
-ods pdf file="O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Data\KeyMetrics_UngrdDept.pdf" style=Custom;
+ods pdf file="O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Data\KeyMetrics_UngrdDept_110518.pdf" style=Custom;
 %ppsmetric;
 ods pdf close;
 
