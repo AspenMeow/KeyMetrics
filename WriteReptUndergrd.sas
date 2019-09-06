@@ -1,4 +1,4 @@
-/***Connect to db***/
+﻿/***Connect to db***/
 %include "H:\SAS\SAS_Log_EDW.sas" ;
 LIBNAME BIMSUTST  odbc required="DSN=BIMSUTST; uid=&BIMSUTST_uid; pwd=&BIMSUTST_pwd";
 libname PAG oracle path="MSUEDW" user="&MSUEDW_uid" pw= "&MSUEDW_pwd"
@@ -6,12 +6,36 @@ schema = OPB_PERS_FALL preserve_tab_names = yes connection=sharedread;
 libname Devdm odbc required="DSN=NT_Dev_Datamart";
 libname PPS odbc required="DSN=NT_PPS";
 
-/*set pag year parameter value*/
+
+option symbolgen;
+options mlogic;
+
+/*glossary data*/
+proc import out=glossory datafile='O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Key Metrics Glosary_V3.xlsx' dbms=xlsx replace; 
+getnames=yes;
+range="Sheet1$A3:C35";
+run;
+
+/*set pag year parameter value
 %let entrycohort =2012;
-%let gradcohort ='2017-2018';
+%let gradcohort ='2018-2019';*/
+/*set up pag yr paramter dynamically*/
+proc sql stimer;
+select max(cohort) into: entrycohort
+from PAG.PERSISTENCE_V
+ where (ENTRANT_SUMMER_FALL='Y' or substr(ENTRY_TERM_CODE,1,1)='F') 
+ and student_level='UN' and level_entry_status='FRST' and grad6 is not null;
+
+ select distinct PARAMETER_VALUE_TEXT into: gradcohort
+ from PAG.STANDARD_REPORT_PARAMETERS_V
+ where parameter_name ='PAG_GRADUATING_COHORT_CEILING_YEAR';
+ quit;
+
 
 /*set whether pps section include only departments have undergrads*/
-%let ungradinclude=Y;
+%let ungradinclude=N;
+/**whether include only depts with students versus all dept*/
+%let alldept=Y;
 /***********get data from rowdata no extra*******************************/
 proc sql stimer;
  create table ppsraw as 
@@ -239,8 +263,8 @@ create table pps  as
 		) coll
 	on a.MANAGE_LEVEL_3=coll.MANAGE_LEVEL_3
 	
-	/**include only those depts with students*/
-where a.Total_Student ne . and a.Total_Student>0
+	/**include only those depts with students
+where a.Total_Student ne . and a.Total_Student>0*/
 order by a.MANAGE_LEVEL_3,a.orderdp,a.Dept;
 quit;
 
@@ -250,7 +274,12 @@ quit;
 	%if &ungradinclude=Y %then %do;
 	data pps;
 	set pps;
-	where Undergraduates ne . and Undergraduates>0;
+	where Undergraduates ne . and Undergraduates>0 and Total_Student ne . and Total_Student>0;
+	%end;
+	%if &alldept=N %then %do;
+	data pps;
+	set pps;
+	where  Total_Student ne . and Total_Student>0;
 	%end;
 	run;
 %mend;
@@ -316,7 +345,7 @@ quit;
 
 /*********************************************************************/
 /******AA data******************/
-%let AAver='06.887';
+%let AAver='AAU_112018';
 proc sql stimer;
 /*AAprogram level data*/
 create table AAprog as
@@ -518,7 +547,7 @@ proc template;
  Style SystemTitle from SystemTitle /
 Font = ("Arial, Helvetica", 6pt, bold );
 Style SystemFooter from systemFooter /
-Font = (“Arial, Helvetica”, 6pt, bold );
+Font = ("Arial, Helvetica", 6pt, bold );
  
 replace color_list /
 'link' = blue /* links */
@@ -568,14 +597,16 @@ run;
 		call symput('gradprofn',gradprofcnt);
 		run;
 
-proc report data= ds  style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt};
+ods proclabel="PPS METRICS - %scan(%quote(&collname.),2,%str(-))";
+proc report data= ds  style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt} contents="" ;
 		title1 h=13pt "PPS Metrics by Lead Organization Structure"  ;
-		title2 h=6pt "";
-		title3 "&collname" ;
+		title2 h=6pt " ";
+		title3 h=10pt "&collname" ;
 		footnote1 h=9pt justify=left "Note: master student counts include non-degree seeking lifelong graduates and MSU Law lifelong students." ;
 		footnote2 h=9pt justify=left "Departments included are those led by instructional colleges and have data in at least one PPS metrics.";
 		footnote3 h=9pt justify=left "PPS version: &version";
-		column Dept Undergraduates Masters Doctoral Grad_Prof V1 V2 V3 V4 V5;
+		footnote j = r 'Page !{thispage} of !{lastpage}';
+		column MANAGE_LEVEL_3 Dept Undergraduates Masters Doctoral Grad_Prof V1 V2 V3 V4 V5;
 		define Dept/display 'Dept Name' ;
 		define Undergraduates/display "Undergrads Fall %substr(&Ungrdyr,1,4)" format=comma15.0 ;
 		define Masters/display "Masters Fall %substr(&Masteryr,1,4)" format=comma15.0 ;
@@ -591,6 +622,10 @@ proc report data= ds  style(report)={outputwidth=100%} style(header)={font_face=
 		define V3/display "Tuition Revenue/Instructional Cost &V3yr" format=percentn15.0 style(column)=[width=8%];
 		define V4/display "Total Grants - 3 Year Average-PI-Real$ &V4yr" format=dollar15.0;
 		define V5/display "Total Grant PI Based/TS AF-FTE &V5yr" format=dollar15.0 style(column)=[width=8%];
+		define MANAGE_LEVEL_3/group noprint; 
+		break before MANAGE_LEVEL_3 / contents="" page;
+
+	
 
  compute V1;
      if V1 lt &PSV133_3 & V1 ne . then call define(_col_,"style","style={background=#a1d99b}");
@@ -620,14 +655,16 @@ call symput('AAver', VERSION);
 call symput('Yr',YEAR );
 run;
 
-proc report data= aa  split='~'  spanrows style(report)={outputwidth=100%}  style(header)={font_face='Arial, Helvetica' font_size=8pt};
+ods proclabel="ACADEMIC ANALYTICS - %scan(%quote(&collname.),2,%str(-))";
+proc report data= aa  split='~'  spanrows style(report)={outputwidth=100%}  style(header)={font_face='Arial, Helvetica' font_size=8pt} contents="";
 title1 h=13pt "Academic Analytics Metrics PhD Program View &Yr" ;
-title2 h=6pt "";
-title3 &MAUName ;
+title2 h=6pt " ";
+title3 h=10pt &MAUName ;
 footnote1 h=9pt justify=left "Data Source: Academic Analytics Program View" ;
 footnote2 h=9pt justify=left "AA version: &AAver";
 footnote3 justify=left " ";
-column PHD_PROGRAM FACULTY_IN_PROG NATIONAL_ACADEMY_MEMBERS PROG_IN_MULT_TAXONOMIES TAXONOMY 
+footnote j = r 'Page !{thispage} of !{lastpage}';
+column MAU PHD_PROGRAM FACULTY_IN_PROG NATIONAL_ACADEMY_MEMBERS PROG_IN_MULT_TAXONOMIES TAXONOMY 
 	AAU_PROG_IN_DISCIPLINE1 PCT_SCHLR_RSCH_INDEX1  RANK_SCHLR_RSCH_INDEX1 PCT_JOURNAL_PUBS_PER_FACULTY1 PCT_CITATIONS_PER_FACULTY1
  PCT_CITATIONS_PER_PUBLICATION1 PCT_GRANTS_PER_FACULTY1 PCT_GRANT_DOLLARS_PER_FACULTY1 PCT_DOLLARS_PER_GRANT1 PCT_AWARDS_PER_FACULTY1;
 define PHD_PROGRAM/ order 'PhD Program'  style(column)=[vjust=m just=l ] ;
@@ -636,15 +673,17 @@ define NATIONAL_ACADEMY_MEMBERS/ order 'N of National Academy Member' style(colu
 define PROG_IN_MULT_TAXONOMIES/ order 'Program Mutiple Taxonomy' style(column)=[vjust=m  ];
 define TAXONOMY/display   'Taxonomy' style(column)=[cellwidth=10%]  ;
 define AAU_PROG_IN_DISCIPLINE1/display 'N of Program in discipline at AAU' ;
-define PCT_SCHLR_RSCH_INDEX1/display 'FSPI Percentitle' format=comma10.2 ;
+define PCT_SCHLR_RSCH_INDEX1/display 'FSPI Percentile' format=comma10.2 ;
 define RANK_SCHLR_RSCH_INDEX1/display 'FPSI Rank' format=comma10.0 ;
 define PCT_JOURNAL_PUBS_PER_FACULTY1/display 'Percentile on Journal Pubs per faculty' format=comma10.2  ;
 define PCT_CITATIONS_PER_FACULTY1/display 'Percentile on Citations per faculty' format=comma10.2 ;
 define PCT_CITATIONS_PER_PUBLICATION1/display 'Percentile on Citations per publication' format=comma10.2 ;
 define PCT_GRANTS_PER_FACULTY1/display 'Percentile on Grants per faculty' format=comma10.2  ;
-define PCT_GRANT_DOLLARS_PER_FACULTY1/display 'Percentitle on Grant Dollars per faculty' format=comma10.2 ;
-define PCT_DOLLARS_PER_GRANT1/display 'Percentitle Dollars per Grant' format=comma10.2 ;
-define PCT_AWARDS_PER_FACULTY1/display 'Percentitle on Awards per faculty' format=comma10.2 ;
+define PCT_GRANT_DOLLARS_PER_FACULTY1/display 'Percentile on Grant Dollars per faculty' format=comma10.2 ;
+define PCT_DOLLARS_PER_GRANT1/display 'Percentile Dollars per Grant' format=comma10.2 ;
+define PCT_AWARDS_PER_FACULTY1/display 'Percentile on Awards per faculty' format=comma10.2 ;
+define MAU / group noprint; 
+break before MAU / contents="" page;
 %AAcolor(var=PCT_JOURNAL_PUBS_PER_FACULTY1,j=JP);
 %AAcolor(var=PCT_CITATIONS_PER_FACULTY1,j=CF);
 %AAcolor(var=PCT_CITATIONS_PER_PUBLICATION1, j=CP);
@@ -662,14 +701,17 @@ if MAU="&&coll&k";
 call symput('entercoll',Coll_1st);
 run;
 
-proc report data= pag  split='~'  spanrows style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt} ;
+ods proclabel="PERSISTENCE & GRADUATION - %UPCASE(%scan(%quote(&entercoll.),2,%str(-)))";
+
+proc report data= pag  split='~'  spanrows style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt}  contents="" ;
 title1 h=13pt "First-Time Undergraduates Persistence At and Graduation Rate From MSU By First Department" ;
-title2 h=6pt "";
-title3 h=12pt &entercoll ;
-title4 "Entering Cohort : &entrycohort ";
+title2 h=6pt " ";
+title3 h=11pt &entercoll ;
+title4 h=10pt "Entering Cohort : &entrycohort ";
 footnote1 h=9pt justify=left "Data Source: PAG " ;
 footnote2 h=9pt justify=left " ";
-column Dept_1st N PERSIST1 PERSIST2 PERSIST3 GRAD4 GRAD5 GRAD6;
+footnote j = r 'Page !{thispage} of !{lastpage}';
+column MAU Dept_1st N PERSIST1 PERSIST2 PERSIST3 GRAD4 GRAD5 GRAD6;
 define Dept_1st/display 'Entering Department'  style(column)=[vjust=m just=l ] ;
 define N/ display 'N'  format=comma10.0;
 define PERSIST1/ display 'Persist 1st Returning Fall' format=comma10.1 ;
@@ -678,6 +720,8 @@ define PERSIST3/ display 'Persist 3rd Returning Fall' format=comma10.1 ;
 define Grad4/ display 'Graduated by 4th Yr' format=comma10.1 ;
 define Grad5/ display 'Graduated by 5th Yr' format=comma10.1 ;
 define Grad6/ display 'Graduated by 6th Yr' format=comma10.1 ;
+define MAU/group noprint;
+break before MAU / contents="" page;
 %colorblock(var=PERSIST,t=P,j=1,add=2);
 %colorblock(var=PERSIST, t=P, j=2,add=2);
 %colorblock(var=PERSIST, t=P, j=3,add=2);
@@ -699,19 +743,22 @@ if MAU="&&coll&k";
 call symput('degrcoll',Coll_Degr);
 run;
 
+ods proclabel="TIME-TO-DEGREE - %UPCASE(%scan(%quote(&degrcoll.),2,%str(-)))";
 
-proc report data= pagdg  split='~'  spanrows  style(header)={font_face='Arial, Helvetica'};
+proc report data= pagdg  split='~'  spanrows  style(header)={font_face='Arial, Helvetica'} contents="";
 title1 h=13pt "First-Time Undergraduates Time-To-Degree By Graduating Cohort and Degree Department" ;
-title2 h=6pt "";
-title3 h=12pt &degrcoll ;
-title4 "Graduating Cohort :" &gradcohort ;
+title2 h=6pt " ";
+title3 h=11pt &degrcoll ;
+title4 h=10pt "Graduating Cohort :" &gradcohort ;
 footnote1 h=9pt justify=left "Data Source: PAG " ;
 footnote2 h=9pt justify=left " ";
-column Dept_DEGR N TTD;
+footnote j = r 'Page !{thispage} of !{lastpage}';
+column MAU Dept_DEGR N TTD;
 define Dept_Degr/display 'Degree Department'  style(column)=[vjust=m just=l width=50%] ;
 define N/ display 'N'  format=comma10.0;
 define TTD/ display 'Time To Degree in Years' format=comma10.2  style(column)=[ width=20%];
-
+define MAU/group noprint;
+break before MAU/ contents="" page; 
 compute TTD;
      if TTD lt &TTD33_3 & TTD ne . then call define(_col_,"style","style={background=#a1d99b }");
 	 else if TTD gt &TTD66_6 & TTD ne . then call define(_col_,"style","style={background=#fff7bc}");
@@ -728,12 +775,26 @@ compute Dept_DEGR;
 %end;
 %mend ppsmetric;
 
+%let todaysDate = %sysfunc(today(), yymmddn8.);
 
-
-options   nodate nonumber leftmargin=0.5in rightmargin=0.5in orientation=landscape papersize=A4 center missing=' ' ;
+options   nodate  leftmargin=0.5in rightmargin=0.5in orientation=landscape papersize=A4 center missing=' ' ;
 ods listing close;
-ods pdf file="O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Data\KeyMetrics_UngrdDept_110518.pdf" style=Custom;
+ods pdf file="O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Output\KeyMetrics_alldept_&todaysDate..pdf" style=Custom contents=yes;
+ods escapechar= '!';
 %ppsmetric;
+
+/*glossary*/
+ods proclabel="GLOSSARY";
+proc print data=glossory  noobs   split='~'  style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt}  contents="" ;
+title1 h=13pt "Key Metrics Glossary: Planning Profile Summary, Academic Analytics, and Persistence and Graduation Data" ;
+footnote1 j=l h=9pt ITALIC "Key Metrics Color Coding:" ;
+footnote2 j=l h=8pt   "Green - The department ranks within the top third of departments at MSU on this metric. ";
+footnote3 j=l h=8pt  "Grey - The department ranks within the middle third of departments at MSU on this metric. ";
+footnote4 j=l h=8pt  "Yellow - The department ranks within the bottom third of departments at MSU on this metric. ";
+footnote5 j=l h=8pt "White - This metric is not ranked. ";
+footnote6 j = r 'Page !{thispage} of !{lastpage}';
+run;
+ods listing;
 ods pdf close;
 
 
