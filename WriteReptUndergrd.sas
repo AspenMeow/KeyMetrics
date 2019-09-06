@@ -605,7 +605,7 @@ proc report data= ds  style(report)={outputwidth=100%} style(header)={font_face=
 		footnote1 h=9pt justify=left "Note: master student counts include non-degree seeking lifelong graduates and MSU Law lifelong students." ;
 		footnote2 h=9pt justify=left "Departments included are those led by instructional colleges and have data in at least one PPS metrics.";
 		footnote3 h=9pt justify=left "PPS version: &version";
-		footnote j = r 'Page !{thispage} of !{lastpage}';
+		footnote4 j = r 'Page !{thispage} of !{lastpage}';
 		column MANAGE_LEVEL_3 Dept Undergraduates Masters Doctoral Grad_Prof V1 V2 V3 V4 V5;
 		define Dept/display 'Dept Name' ;
 		define Undergraduates/display "Undergrads Fall %substr(&Ungrdyr,1,4)" format=comma15.0 ;
@@ -663,7 +663,7 @@ title3 h=10pt &MAUName ;
 footnote1 h=9pt justify=left "Data Source: Academic Analytics Program View" ;
 footnote2 h=9pt justify=left "AA version: &AAver";
 footnote3 justify=left " ";
-footnote j = r 'Page !{thispage} of !{lastpage}';
+footnote4 j = r 'Page !{thispage} of !{lastpage}';
 column MAU PHD_PROGRAM FACULTY_IN_PROG NATIONAL_ACADEMY_MEMBERS PROG_IN_MULT_TAXONOMIES TAXONOMY 
 	AAU_PROG_IN_DISCIPLINE1 PCT_SCHLR_RSCH_INDEX1  RANK_SCHLR_RSCH_INDEX1 PCT_JOURNAL_PUBS_PER_FACULTY1 PCT_CITATIONS_PER_FACULTY1
  PCT_CITATIONS_PER_PUBLICATION1 PCT_GRANTS_PER_FACULTY1 PCT_GRANT_DOLLARS_PER_FACULTY1 PCT_DOLLARS_PER_GRANT1 PCT_AWARDS_PER_FACULTY1;
@@ -710,7 +710,7 @@ title3 h=11pt &entercoll ;
 title4 h=10pt "Entering Cohort : &entrycohort ";
 footnote1 h=9pt justify=left "Data Source: PAG " ;
 footnote2 h=9pt justify=left " ";
-footnote j = r 'Page !{thispage} of !{lastpage}';
+footnote3 j = r 'Page !{thispage} of !{lastpage}';
 column MAU Dept_1st N PERSIST1 PERSIST2 PERSIST3 GRAD4 GRAD5 GRAD6;
 define Dept_1st/display 'Entering Department'  style(column)=[vjust=m just=l ] ;
 define N/ display 'N'  format=comma10.0;
@@ -752,7 +752,7 @@ title3 h=11pt &degrcoll ;
 title4 h=10pt "Graduating Cohort :" &gradcohort ;
 footnote1 h=9pt justify=left "Data Source: PAG " ;
 footnote2 h=9pt justify=left " ";
-footnote j = r 'Page !{thispage} of !{lastpage}';
+footnote3 j = r 'Page !{thispage} of !{lastpage}';
 column MAU Dept_DEGR N TTD;
 define Dept_Degr/display 'Degree Department'  style(column)=[vjust=m just=l width=50%] ;
 define N/ display 'N'  format=comma10.0;
