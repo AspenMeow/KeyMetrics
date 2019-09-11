@@ -457,7 +457,7 @@ from PAG.PERSISTENCE_V
 where Student_LEVEL='UN'
 and (  ENTRANT_SUMMER_FALL='Y' or substr(ENTRY_TERM_CODE,1,1)='F' )
 and LEVEL_ENTRY_STATUS='FRST'
-and Graduating_Cohort= &gradcohort
+and Graduating_Cohort= "&gradcohort"
 group by GRADUATING_COHORT, COLLEGE_DEGREE, COLLEGE_DEGREE_NAME, DEPT_DEGREE, DEPT_DEGREE_NAME;
 
 create table PAG_Grad_Coll as 
@@ -467,7 +467,7 @@ from PAG.PERSISTENCE_V
 where Student_LEVEL='UN'
 and (  ENTRANT_SUMMER_FALL='Y' or substr(ENTRY_TERM_CODE,1,1)='F' )
 and LEVEL_ENTRY_STATUS='FRST'
-and Graduating_Cohort= &gradcohort
+and Graduating_Cohort= "&gradcohort"
 group by GRADUATING_COHORT, COLLEGE_DEGREE, COLLEGE_DEGREE_NAME;
 
 run;
@@ -655,7 +655,9 @@ call symput('AAver', VERSION);
 call symput('Yr',YEAR );
 run;
 
-ods proclabel="ACADEMIC ANALYTICS - %scan(%quote(&collname.),2,%str(-))";
+*ods proclabel="ACADEMIC ANALYTICS - %scan(%quote(&collname.),2,%str(-))";
+*ods noproctitle;
+ods proclabel=' '; 
 proc report data= aa  split='~'  spanrows style(report)={outputwidth=100%}  style(header)={font_face='Arial, Helvetica' font_size=8pt} contents="";
 title1 h=13pt "Academic Analytics Metrics PhD Program View &Yr" ;
 title2 h=6pt " ";
@@ -701,8 +703,9 @@ if MAU="&&coll&k";
 call symput('entercoll',Coll_1st);
 run;
 
-ods proclabel="PERSISTENCE & GRADUATION - %UPCASE(%scan(%quote(&entercoll.),2,%str(-)))";
-
+ods proclabel=' '; 
+*ods proclabel="PERSISTENCE & GRADUATION - %UPCASE(%scan(%quote(&entercoll.),2,%str(-)))";
+*ods noproctitle;
 proc report data= pag  split='~'  spanrows style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt}  contents="" ;
 title1 h=13pt "First-Time Undergraduates Persistence At and Graduation Rate From MSU By First Department" ;
 title2 h=6pt " ";
@@ -743,8 +746,8 @@ if MAU="&&coll&k";
 call symput('degrcoll',Coll_Degr);
 run;
 
-ods proclabel="TIME-TO-DEGREE - %UPCASE(%scan(%quote(&degrcoll.),2,%str(-)))";
-
+*ods proclabel="TIME-TO-DEGREE - %UPCASE(%scan(%quote(&degrcoll.),2,%str(-)))";
+ods proclabel=' ';
 proc report data= pagdg  split='~'  spanrows  style(header)={font_face='Arial, Helvetica'} contents="";
 title1 h=13pt "First-Time Undergraduates Time-To-Degree By Graduating Cohort and Degree Department" ;
 title2 h=6pt " ";
@@ -777,7 +780,7 @@ compute Dept_DEGR;
 
 %let todaysDate = %sysfunc(today(), yymmddn8.);
 
-options   nodate  leftmargin=0.5in rightmargin=0.5in orientation=landscape papersize=A4 center missing=' ' ;
+options   nodate  nonumber leftmargin=0.5in rightmargin=0.5in orientation=landscape papersize=A4 center missing=' ' ;
 ods listing close;
 ods pdf file="O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Output\KeyMetrics_alldept_&todaysDate..pdf" style=Custom contents=yes;
 ods escapechar= '!';
