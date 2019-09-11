@@ -7,6 +7,8 @@ libname Devdm odbc required="DSN=NT_Dev_Datamart";
 libname PPS odbc required="DSN=NT_PPS";
 
 %let todaysDate = %sysfunc(today(), yymmddn8.);
+%let AAver='AAU_112018';
+
 option symbolgen;
 options mlogic;
 
@@ -112,15 +114,15 @@ run;
 /**get max year**/
 proc sql stimer;
 create table yr as 
-select a.*,b.row_id
+select a.*,b.rowid as row_id
 from PPS.DataAllYears a
-inner join Devdm.Datamart_Variables_Current b
+inner join Devdm.row_ref b
 on a.typea=b.typea
 and a.subtype=b.subtype
 and a.type=b.type
 and a.suborder=b.suborder
 where a.infounit='51000'
-and b. row_id in (42,43,44,45,46,
+and b.rowid in (42,43,44,45,46,
                    108,
                    37, 153,
                    882,883,
@@ -345,7 +347,7 @@ quit;
 
 /*********************************************************************/
 /******AA data******************/
-%let AAver='AAU_112018';
+
 proc sql stimer;
 /*AAprogram level data*/
 create table AAprog as
