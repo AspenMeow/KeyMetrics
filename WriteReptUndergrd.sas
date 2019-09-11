@@ -1,4 +1,4 @@
-﻿/***Connect to db***/
+/***Connect to db***/
 %include "H:\SAS\SAS_Log_EDW.sas" ;
 LIBNAME BIMSUTST  odbc required="DSN=BIMSUTST; uid=&BIMSUTST_uid; pwd=&BIMSUTST_pwd";
 libname PAG oracle path="MSUEDW" user="&MSUEDW_uid" pw= "&MSUEDW_pwd"
@@ -6,7 +6,7 @@ schema = OPB_PERS_FALL preserve_tab_names = yes connection=sharedread;
 libname Devdm odbc required="DSN=NT_Dev_Datamart";
 libname PPS odbc required="DSN=NT_PPS";
 
-
+%let todaysDate = %sysfunc(today(), yymmddn8.);
 option symbolgen;
 options mlogic;
 
@@ -509,7 +509,83 @@ run;
 
 /****************************************************/
 /*generate macro for coll values from all three sources*/
-proc sql stimer;
+proc sql;
+create table tocfor as 
+select MANAGE_LEVEL_3, 1 as sec
+ from PPS
+ union
+ select MAU, 2 as sec
+ from AAprog
+ union 
+ select substr(Coll_1st,1,2) as Coll, 3 as sec
+ from PAG_enter
+ union 
+ select substr(Coll_degr,1,2) as Coll,4 as sec
+ from PAG_Degr;
+ quit;
+
+ /**preparing for table of contents in proc document macro*/
+ proc sort data=tocfor; by  MANAGE_LEVEL_3 sec;
+ data tocfor;
+  set tocfor;
+  seccount + 1;
+  by MANAGE_LEVEL_3;
+  if first.MANAGE_LEVEL_3 then seccount = 1;
+run;
+data tocfor;
+set tocfor;
+counter+1;
+run;
+
+proc sql;
+create table toc as 
+select MANAGE_LEVEL_3, min(counter) as min, count(*) as cnt, min(sec) as minsec
+from tocfor
+group by MANAGE_LEVEL_3;
+
+create table tocfor as
+select  a.MANAGE_LEVEL_3,a.counter,min, cnt, minsec
+from tocfor a
+inner join toc b 
+on a.MANAGE_LEVEL_3=b.MANAGE_LEVEL_3
+where (a.seccount >1) or cnt=1;
+quit;
+/*excluding 43*/
+data _null_;
+set tocfor;
+call symput('dpg'||left(_n_),counter);
+call symput('rpg'||left(_n_),min);
+where cnt>1;
+run;
+
+proc sql noprint;
+select count(*) into :seccnt
+from tocfor
+where cnt>1;
+quit;
+
+/*TOC adjust pages macro*/
+%macro pageadj;
+%do i=1 %to &seccnt;
+move Report#&&dpg&i.\Report#1 to report#&&rpg&i.;
+ delete Report#&&dpg&i.;
+%end;
+%mend;
+
+/*macro for loop over all colleges*/
+proc sql noprint;
+select distinct count(distinct MANAGE_LEVEL_3)
+ into :collcnt
+ from toc;
+quit;
+
+data _null_;
+set toc;
+call symput('coll'||left(_n_),MANAGE_LEVEL_3);
+call symput('minsec'||left(_n_),minsec);
+run;
+
+/*proc sql stimer;
  create table allcoll as 
  select MANAGE_LEVEL_3
  from PPS
@@ -532,7 +608,7 @@ select distinct MANAGE_LEVEL_3
  from allcoll
  order by MANAGE_LEVEL_3;
  quit;
-
+*/
 
 
 
@@ -596,9 +672,13 @@ run;
 		call symput('collname',leadcoll);
 		call symput('gradprofn',gradprofcnt);
 		run;
-
-ods proclabel="PPS METRICS - %scan(%quote(&collname.),2,%str(-))";
-proc report data= ds  style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt} contents="" ;
+%if &&minsec&k=1 %then %do;
+ods proclabel="%scan(%quote(&collname.),2,%str(-))";
+%end;
+%else %do;
+ods proclabel=' '; 
+%end;
+proc report data= ds  style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt} contents="PPS Metrics" ;
 		title1 h=13pt "PPS Metrics by Lead Organization Structure"  ;
 		title2 h=6pt " ";
 		title3 h=10pt "&collname" ;
@@ -655,10 +735,14 @@ call symput('AAver', VERSION);
 call symput('Yr',YEAR );
 run;
 
-*ods proclabel="ACADEMIC ANALYTICS - %scan(%quote(&collname.),2,%str(-))";
+%if &&minsec&k=2 %then %do;
+ods proclabel="%scan(%quote(&collname.),2,%str(-))";
+%end;
+%else %do;
 *ods noproctitle;
 ods proclabel=' '; 
-proc report data= aa  split='~'  spanrows style(report)={outputwidth=100%}  style(header)={font_face='Arial, Helvetica' font_size=8pt} contents="";
+%end;
+proc report data= aa  split='~'  spanrows style(report)={outputwidth=100%}  style(header)={font_face='Arial, Helvetica' font_size=8pt} contents="Academic Analytics";
 title1 h=13pt "Academic Analytics Metrics PhD Program View &Yr" ;
 title2 h=6pt " ";
 title3 h=10pt &MAUName ;
@@ -703,10 +787,14 @@ if MAU="&&coll&k";
 call symput('entercoll',Coll_1st);
 run;
 
+%if &&minsec&k=3 %then %do;
+ods proclabel="%UPCASE(%scan(%quote(&entercoll.),2,%str(-)))";
+%end;
+%else %do;
 ods proclabel=' '; 
-*ods proclabel="PERSISTENCE & GRADUATION - %UPCASE(%scan(%quote(&entercoll.),2,%str(-)))";
+%end;
 *ods noproctitle;
-proc report data= pag  split='~'  spanrows style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt}  contents="" ;
+proc report data= pag  split='~'  spanrows style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt}  contents="Persistence & Graduation" ;
 title1 h=13pt "First-Time Undergraduates Persistence At and Graduation Rate From MSU By First Department" ;
 title2 h=6pt " ";
 title3 h=11pt &entercoll ;
@@ -746,9 +834,13 @@ if MAU="&&coll&k";
 call symput('degrcoll',Coll_Degr);
 run;
 
-*ods proclabel="TIME-TO-DEGREE - %UPCASE(%scan(%quote(&degrcoll.),2,%str(-)))";
+%if &&minsec&k=4 %then %do;
+ods proclabel="TIME-TO-DEGREE - %UPCASE(%scan(%quote(&degrcoll.),2,%str(-)))";
+%end;
+%else %do;
 ods proclabel=' ';
-proc report data= pagdg  split='~'  spanrows  style(header)={font_face='Arial, Helvetica'} contents="";
+%end;
+proc report data= pagdg  split='~'  spanrows  style(header)={font_face='Arial, Helvetica'} contents="Time-To-Degree";
 title1 h=13pt "First-Time Undergraduates Time-To-Degree By Graduating Cohort and Degree Department" ;
 title2 h=6pt " ";
 title3 h=11pt &degrcoll ;
@@ -778,14 +870,10 @@ compute Dept_DEGR;
 %end;
 %mend ppsmetric;
 
-%let todaysDate = %sysfunc(today(), yymmddn8.);
 
-options   nodate  nonumber leftmargin=0.5in rightmargin=0.5in orientation=landscape papersize=A4 center missing=' ' ;
-ods listing close;
-ods pdf file="O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Output\KeyMetrics_alldept_&todaysDate..pdf" style=Custom contents=yes;
-ods escapechar= '!';
+/**output prep for proc document*/
+ods document name=mydocrep(write);
 %ppsmetric;
-
 /*glossary*/
 ods proclabel="GLOSSARY";
 proc print data=glossory  noobs   split='~'  style(report)={outputwidth=100%} style(header)={font_face='Arial, Helvetica' font_size=8pt}  contents="" ;
@@ -797,10 +885,20 @@ footnote4 j=l h=8pt  "Yellow - The department ranks within the bottom third of d
 footnote5 j=l h=8pt "White - This metric is not ranked. ";
 footnote6 j = r 'Page !{thispage} of !{lastpage}';
 run;
+ods document close;
+
+
+proc document name=mydocrep ;
+/*adjust toc*/
+ %pageadj;
+run;
+options   nodate  nonumber leftmargin=0.5in rightmargin=0.5in orientation=landscape papersize=A4 center missing=' ' ;
+ods listing close;
+ods pdf file="O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Output\KeyMetrics_alldept_&todaysDate..pdf" style=Custom contents=yes;
+ods escapechar= '!';
+ replay;
+run;
 ods listing;
 ods pdf close;
-
-
-
-
+quit; 
 
