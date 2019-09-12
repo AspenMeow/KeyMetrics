@@ -627,14 +627,14 @@ Font = ("Arial, Helvetica", 6pt, bold );
 Style SystemFooter from systemFooter /
 Font = ("Arial, Helvetica", 6pt, bold );
  
-replace color_list /
+class color_list /
 'link' = blue /* links */
-/*'bgH' = grayBB  row and column header background */
+'bgH' = white /* row and column header background */
 'bgT' = white /* table background */
 'bgD' = white /* data cell background */
 'fg' = black /* text color */
 'bg' = white; 
-replace Table from Output /
+class Table from Output /
  frame = box /* outside borders: void, box, above/below, vsides/hsides, lhs/rhs */
 rules = all /* internal borders: none, all, cols, rows, groups */
 cellpadding = 4pt /* the space between table cell contents and the cell border */
@@ -872,7 +872,7 @@ compute Dept_DEGR;
 %end;
 %mend ppsmetric;
 
-
+ods listing close;
 /**output prep for proc document*/
 ods document name=mydocrep(write);
 %ppsmetric;
@@ -895,8 +895,8 @@ proc document name=mydocrep ;
  %pageadj;
 run;
 options   nodate  nonumber leftmargin=0.5in rightmargin=0.5in orientation=landscape papersize=A4 center missing=' ' ;
-ods listing close;
-ods pdf file="O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Output\KeyMetrics_alldept_&todaysDate..pdf" style=Custom contents=yes;
+
+ods pdf file="O:\IS\Internal\Reporting\Annual Reports\Key Metrics Set\Output\TKeyMetrics_alldept_&todaysDate..pdf" style=Custom contents=yes;
 ods escapechar= '!';
  replay;
 run;
