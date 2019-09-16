@@ -7,7 +7,7 @@ libname Devdm odbc required="DSN=NT_Dev_Datamart";
 libname PPS odbc required="DSN=NT_PPS";
 
 %let todaysDate = %sysfunc(today(), yymmddn8.);
-%let AAver='AAU_112018';
+*%let AAver='AAU_112018';
 
 option symbolgen;
 options mlogic;
@@ -31,7 +31,12 @@ from PAG.PERSISTENCE_V
  select distinct PARAMETER_VALUE_TEXT into: gradcohort
  from PAG.STANDARD_REPORT_PARAMETERS_V
  where parameter_name ='PAG_GRADUATING_COHORT_CEILING_YEAR';
+
+ select distinct PARAMETER_VALUE_TEXT into: AAver
+ from PAG.STANDARD_REPORT_PARAMETERS_V
+ where parameter_name ='ACAD_ANALYTIC_AAU_COMP_VERSION';
  quit;
+
 
 
 /*set whether pps section include only departments have undergrads*/
