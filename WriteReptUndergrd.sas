@@ -322,10 +322,11 @@ set qtlg;
 call symput(_NAME_,COL1);
 run;
 
-
 /*get PPS yrs as macro*/
  data _null_;
  set PPS;
+ /*remove missing on yr*/
+ where Yr_Undergraduates ne '' and Yr_Masters ne '' and Yr_Doctoral ne '' and Yr_Grad_Prof ne '' and Yr_V1 ne '' and Yr_V2 ne '' and Yr_V3 ne '' and Yr_V4 ne '' and Yr_V5 ne '';
  call symput('Ungrdyr',Yr_Undergraduates);
  call symput('Masteryr',Yr_Masters);
  call symput('Docyr',Yr_Doctoral);
@@ -335,10 +336,11 @@ run;
    call symput('V3yr',Yr_V3);
   call symput('V4yr',Yr_V4);
  call symput('V5yr',Yr_V5);
+
 run;
 %put &V5yr;
-%put %substr(&Ungrdyr,1,4);
-
+%put %substr(%TRIM(&Ungrdyr),1,4);
+%put %substr(%TRIM(&Profyr),1,4);
 
 
 
@@ -352,13 +354,13 @@ quit;
 
 /*********************************************************************/
 /******AA data******************/
-
+%put &&AAver;
 proc sql stimer;
 /*AAprogram level data*/
 create table AAprog as
 select *
 from BIMSUTST.ACADEMIC_ANALYTICS_METRICS_P
-where VERSION=&AAver;
+where VERSION="&AAver";
 
 /*for adding college name*/
 create table LEVEL3 as 
